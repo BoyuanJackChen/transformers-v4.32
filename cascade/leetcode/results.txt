@@ -1,0 +1,36 @@
+
+300 max tokens for answers, top-p 0.95, temperature = 0.7
+
+--- Only use the largest 16B model ---
+16B-pass@1: 27137 seconds (7.5 hours), accuracy 32.3%, t=0.7
+16B-pass@2: 51493 seconds (14.3 hours), accuracy 35.4%, t=0.7
+16B-pass@3: 78338 seconds (21.8 hours), accuracy 32.3%, t=0.7
+16B-pass@5: 132373 seconds (36.7 hours), accuracy 43.3%, t=0.7
+16B-pass@10: 72 hours, accuracy 57.3%, t=0.7
+
+Non-parallel:
+16B-pass@1: 27123 seconds (7.5 hours), accuracy 30.5%, t=0.2
+16B-pass@2: 106202 seconds (29.5 hours), accuracy 30.5%, t=0.2
+
+--- Model cascading ---
+Full cascading means 350M -> 2B -> 6B -> 16B
+3-model cascading means 2B -> 6B -> 16B
+
+If I let each model generate 100 tokens for tests (1-2 assert lines):
+Full Cascading: 38301 seconds (10.6 hours), accuracy 34.8%
+3-model Cascading: 39643 seconds, (11.0 hours), accuracy 34.8%
+
+If I let each model generate 150 tokens for tests (1-3 assert lines):
+Full Cascading: 45853 seconds, (12.7 hours), accuracy 37.8%
+3-model Cascading: 47202 seconds (13.1 hours), accuracy 37.2%
+
+If I let each model generate 200 tokens for tests (1-4 assert lines):
+Full Cascading: 56351 seconds (15.7 hours), accuracy 37.2%
+3-model Cascading: 56254 seconds (15.6 hours), accuracy 36.6%
+
+
+--- temperature = 0.2 ---
+50 test tokens (0-5 tests): 37832 seconds (10.5 hours), accuracy 36.0%
+100 test tokens (1-11 tests): 48001 seconds (13.3 hours), accuracy 37.2%
+150 test tokens (1-16 tests): 52075 seconds (14.5 hours), accuracy 37.8%
+200 test tokens (1-20 tests): 58024 seconds (16.1 hours), accuracy 37.8%

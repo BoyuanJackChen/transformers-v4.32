@@ -1,0 +1,7 @@
+
+Codegen-1 family results. 
+300 max tokens for answers, top-p 0.95, temperature = 0.2 / 0.7
+
+--- 16B-only pass@k ---
+16B pass@1: 115031 seconds (31.95 hours), accuracy:
+16B pass@2: 

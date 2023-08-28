@@ -1,0 +1,37 @@
+
+300 max tokens for answers, top-p 0.95. 164 questions in total. 
+
+Non-parallel sanity check:
+16B-pass@1: 27123 seconds (7.5 hours), accuracy 30.5%, t=0.2
+16B-pass@2: 106202 seconds (29.5 hours), accuracy 30.5%, t=0.2
+
+Model cascading rules:
+Full cascading means 350M -> 2B -> 6B -> 16B
+No-350M cascading means 2B -> 6B -> 16B
+
+
+--- Only use the largest 16B model for pass@k ---
+16B-pass@1: 27137 seconds (7.5 hours),  accuracy 32.3%, t=0.7
+16B-pass@2: 53504 seconds (14.9 hours), accuracy 29.9%, t=0.2
+            51493 seconds (14.3 hours), accuracy 35.4%, t=0.7 
+16B-pass@3: 83204 seconds (23.1 hours), accuracy 32.9%, t=0.2
+            78338 seconds (21.8 hours), accuracy 32.3%, t=0.7
+16B-pass@5: 136164 seconds (37.8 hours), accuracy 32.3%, t=0.2
+            132373 seconds (36.7 hours), accuracy 43.3%, t=0.7
+16B-pass@10: 72 hours, accuracy 57.3%, t=0.7
+
+--- 16B pass@k with singular pick ---
+
+
+
+--- Untrimmed tests, temperature = 0.2 ---
+50 test tokens (0-5 tests): 37832 seconds (10.5 hours), accuracy 36.0%
+100 test tokens (1-11 tests): 48001 seconds (13.3 hours), accuracy 37.2%
+150 test tokens (1-16 tests): 52075 seconds (14.5 hours), accuracy 37.8%
+200 test tokens (1-20 tests): 58024 seconds (16.1 hours), accuracy 37.8%
+
+--- Trimmed tests, tempearture = 0.7 ---
+50 test tokens (1 test): 7.6 hours, accuracy 32.9%
+100 test tokens (1-2 tests): 38301 seconds (10.6 hours), accuracy 34.8%; no 350M: 39643 seconds, (11.0 hours), accuracy 34.8%
+150 test tokens (1-3 tests): 45853 seconds, (12.7 hours), accuracy 37.8%; no 350M: 47202 seconds (13.1 hours), accuracy 37.2%
+200 test tokens (1-4 tests): 56351 seconds (15.7 hours), accuracy 37.2%; no 350M: 56254 seconds (15.6 hours), accuracy 36.6%

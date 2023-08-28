@@ -1,0 +1,122 @@
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import time
+import torch
+import json
+import os
+
+stopwords = ["\n\n\n", "\n\n"]
+pe_py = "\n<filename>solutions/solution_1.py\n# Here is the correct implementation of the code exercise in python:\n"
+feedback_unspecific = "\n# Above is the answer you just generated, but it was actually incorrect. Can you fix it?"
+
+def trim_with_stopwords(outputs, stopwords, original_prompt) -> str:
+    result = []
+    len_prompt = len(original_prompt)
+    for output in outputs:
+        answer = output[len_prompt:]
+        # Delete "<|endoftext|>" in answer, if it is in it
+        if "<|endoftext|>" in answer:
+            answer = answer.replace("<|endoftext|>", "")
+        min_i = len(answer)
+        for w in sorted(stopwords, reverse=True):
+            for i in range(len(answer)):
+                if answer[i:].startswith(w) and min_i > i:
+                    min_i = i
+        answer = answer[:min_i]
+        result.append(answer)
+    return result
+
+if __name__== "__main__":
+    checkpoint = "bigcode/starcoder"
+    output_file_name = "starcoder_output.json"
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint, device_map="auto")
+    start_load_model = time.time()
+    model = AutoModelForCausalLM.from_pretrained(checkpoint, torch_dtype=torch.float32, device_map="auto")
+    print(f"Time to load model is {time.time() - start_load_model}")
+    model.eval()
+    
+    # Load the questions
+    all_questions_dict = json.load(open("../evaluations/humaneval/data/HumanEval.json", "r"))
+
+    answer_dict_list = []
+    for question_dict in all_questions_dict:
+        number = question_dict["task_id"]
+        print(f"\n\n--- On Question {number} ---\n")
+        prompt = question_dict["prompt"]
+        
+        # Get the def line
+        def_line = ""
+        prompt_list = prompt.split("\n")
+        for line in prompt_list:
+            if line.startswith("def"):
+                def_line = line
+                break
+        
+        prompt_original = prompt + ""
+        prompt += pe_py
+        input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to("cuda")
+        start_generating = time.time()
+        generated_ids = model.generate(
+            input_ids,
+            use_cache=True,
+            pad_token_id=tokenizer.eos_token_id,
+            max_new_tokens=400,
+            do_sample=True,
+            top_p=0.95,
+            temperature=0.2
+        )
+        # print(f"Time to generate is {time.time() - start_generating}")
+        generated_text = tokenizer.batch_decode(generated_ids, skip_special_tokens=False)
+        print(f"generated_text is:\n{generated_text[0]}")
+        decoded_list = []
+        for ids in generated_ids[0]:
+            word = tokenizer.decode(int(ids))
+            decoded_list.append(word)
+        generated_len = len(decoded_list) - len(input_ids[0])
+        prompt_ids = tokenizer(prompt, return_tensors="pt").input_ids
+        prompt = tokenizer.decode(prompt_ids[0])
+        trimmed_text = trim_with_stopwords(generated_text, stopwords, prompt)[0]
+        print(f"trimmed_text is:\n{trimmed_text}")
+        answer_dict = {'number': number, 'prompt': prompt_original, 'first_answer': trimmed_text}
+        
+        # New content with feedback
+        new_text = trimmed_text
+        prompt = new_text + feedback_unspecific + pe_py
+        input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to("cuda")
+        generated_ids = model.generate(
+            input_ids,
+            use_cache=True,
+            pad_token_id=tokenizer.eos_token_id,
+            max_new_tokens=400,
+            do_sample=True,
+            top_p = 0.95,
+            temperature = 0.2
+        )
+        generated_text = tokenizer.batch_decode(generated_ids, skip_special_tokens=False)
+        decoded_list = []
+        for ids in generated_ids[0]:
+            word = tokenizer.decode(int(ids))
+            decoded_list.append(word)
+        generated_len = len(decoded_list) - len(input_ids[0])
+        prompt_ids = tokenizer(prompt, return_tensors="pt").input_ids
+        prompt = tokenizer.decode(prompt_ids[0])
+        print(f"New prompt is:\n{prompt}")
+        print(f"generated new text is:\n{generated_text[0]}")
+        trimmed_text = trim_with_stopwords(generated_text, stopwords, prompt)[0]
+        print(f"trimmed new text is:\n{trimmed_text}")
+        answer_dict['second_answer'] = trimmed_text
+        answer_dict['feedback'] = feedback_unspecific
+        answer_dict_list.append(answer_dict)
+        
+        # Update to json file
+        if not os.path.exists(output_file_name):
+            output_data = [answer_dict]
+            with open(output_file_name, 'w') as f:
+                json.dump(output_data, f, indent=4)
+            answer_dict_list = []
+        else:
+            with open(output_file_name, 'r') as f:
+                output_data = json.load(f)
+            output_data += answer_dict_list
+            with open(output_file_name, 'w') as f:
+                json.dump(output_data, f, indent=4)
+            answer_dict_list = []
